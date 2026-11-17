@@ -14,7 +14,7 @@ xcrun --sdk iphonesimulator clang++ -std=c++17 -fobjc-arc \
 	-Igodot-cpp/include -Igodot-cpp/gen/include -Igodot-cpp/gdextension -Isrc \
 	tests/test_panel_callback_lifetime.mm \
 	godot-cpp/bin/libgodot-cpp.ios.template_release.universal.simulator.a \
-	-framework Foundation -framework UIKit -framework GameKit \
+	-framework Foundation -framework UIKit -framework GameKit -framework StoreKit \
 	-o "$test_root/callback_test"
 SIMCTL_CHILD_ASAN_OPTIONS=detect_stack_use_after_return=1 \
 	xcrun simctl spawn "$1" "$test_root/callback_test"
