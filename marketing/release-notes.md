@@ -1,17 +1,12 @@
-# GameCenterKit 1.0.1
+# GameCenterKit 1.1.0 (fork hehljo/godot-ios-gamecenter)
 
-- Validate leaderboard and achievement metadata before presenting native panels.
-- Report unavailable metadata and presentation timeouts through failure signals.
-- Prevent overlapping native panel requests and safely own queued callback state.
-- Keep the existing public API and Apple platform support.
-
-The shipped native binaries are byte-identical to GridLord's provenance-verified
-addon from source e2e4798. The maintainer confirmed successful live-app testing.
-Only the package version metadata changes from that tested addon.
+- New `request_review()` / `review_requested(ok, error)`: StoreKit review request
+  in the foreground-active scene (iOS 14+); deterministic failure elsewhere.
+  The export plug-in links `StoreKit.framework`.
+- New platform-free GDScript helpers: `GameCenterBridge`, `GameCenterReviewPolicy`,
+  `GameCenterScoreQueue` (occurrence-keyed offline queue for recurring leaderboards).
+- Game Center API unchanged from upstream 1.0.1. Built and validated by this
+  repository's GitHub Actions run; verify the ZIP against `SHA256SUMS`.
 
 Supports official single-precision Godot 4.5–4.7, iOS/iPadOS 14+, and macOS 11+
-editor use. Native Game Center panels are iOS-only.
-
-Extract `gamecenter-addon.zip` into the Godot project root, enable **Game Center
-Export**, and enable the Game Center entitlement in the iOS export preset.
-See the bundled README for Apple Developer and App Store Connect setup.
+editor use. Native Game Center panels and the review prompt are iOS-only.

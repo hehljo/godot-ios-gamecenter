@@ -10,7 +10,44 @@ permissions:
   contents: read
 
 jobs:
+  desktop-stubs:
+    # Empty Linux/Windows libraries so desktop editors and headless test runs
+    # load the extension without "No GDExtension library found" errors.
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+          - os: windows-2025
+            platform: windows
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install SCons
+        run: pipx install scons
+
+      - name: Build stub
+        run: scons platform=${{ matrix.platform }} target=template_debug arch=${{ matrix.arch }} -j4
+
+      - name: Upload stub
+        uses: actions/upload-artifact@v7
+        with:
+          name: stub-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            example/addons/gamecenter/bin/*.so
+            example/addons/gamecenter/bin/*.dll
+          if-no-files-found: error
+
   build:
+    needs: desktop-stubs
     runs-on: macos-15-intel
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
@@ -35,6 +72,13 @@ jobs:
           simulator_id="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next(d["udid"] for runtime, devices in data["devices"].items() if ".iOS-" in runtime for d in devices if d["name"].startswith("iPhone")))')"
           xcrun simctl bootstatus "$simulator_id" -b
           tools/run_ios_callback_test.sh "$simulator_id"
+
+      - name: Download desktop stubs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: stub-*
+          merge-multiple: true
+          path: example/addons/gamecenter/bin
 
       - name: Run repository and package tests
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -98,11 +142,14 @@ jobs:
           plugin_version="$(sed -n 's/^version="\([^"]*\)"/\1/p' example/addons/gamecenter/plugin.cfg)"
           test "$GITHUB_REF_NAME" = "v$plugin_version"
 
+      - name: Write checksums
+        run: (cd dist && sha256sum gamecenter-addon.zip > SHA256SUMS && cat SHA256SUMS)
+
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/gamecenter-addon.zip \
+          gh release create "${GITHUB_REF_NAME}" dist/gamecenter-addon.zip dist/SHA256SUMS \
             --draft \
             --title "${GITHUB_REF_NAME}" \
             --notes-file marketing/release-notes.md

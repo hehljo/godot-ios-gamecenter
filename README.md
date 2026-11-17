@@ -23,6 +23,34 @@ as signals on Godot's main loop.
 - Deterministic input failures and panel lifecycle signals.
 - Reproducible package, binary, Godot compatibility, export, and CI checks.
 
+## Fork additions (1.1.0)
+
+This fork (`hehljo/godot-ios-gamecenter`) adds a StoreKit review request and
+platform-free GDScript helpers; the native Game Center API is unchanged.
+
+- `request_review()` calls `SKStoreReviewController requestReviewInScene:` in the
+  foreground-active window scene. StoreKit alone decides whether a dialog appears
+  (at most three times in 365 days, never in TestFlight). Outside iOS the call
+  fails deterministically with `review_requested(false, reason)`.
+- `GameCenterBridge` wraps the singleton. Without it (Android, Web, desktop,
+  tests) every call answers one frame later with the failure signal a real
+  failure would send, so game code has one path.
+- `GameCenterReviewPolicy.decide(state, moment, rules)` picks the moment: only in
+  the menu between runs, never after a death or an ad, once per app version,
+  after a first win or enough runs and play time. Returns `ask` or the blocking
+  reason.
+- `GameCenterScoreQueue` keeps unsent scores as plain data for the save game, one
+  per board and occurrence, and `prune()` drops expired daily/weekly occurrences
+  (Apple: never submit to past occurrences). `occurrence_index()` uses the same
+  start and duration that App Store Connect stores for recurring leaderboards.
+- Empty Linux x86_64/arm64 and Windows x86_64 editor libraries: desktop editors
+  and headless test runs load the extension without "No GDExtension library
+  found" errors; the bridge then reports Game Center as unavailable.
+  For Android and Web exports, exclude `addons/gamecenter/gamecenter.gdextension`
+  and `addons/gamecenter/bin/*` in the preset (keep the GDScript helpers).
+- `godot --headless --path example --script res://tests/pure_modules.gd` tests
+  these modules on any OS.
+
 ## Compatibility
 
 | Component | Supported versions |
@@ -80,6 +108,7 @@ waiting for Apple services.
 | `report_achievement(achievement_id: String, percent: float)` | Reports finite progress from 0 through 100; emits `achievement_reported`. |
 | `show_achievements()` | Presents achievements on iOS; otherwise emits `panel_failed`. |
 | `set_access_point_visible(visible: bool)` | Shows or hides the top-trailing native access point. |
+| `request_review()` | Hands a review request to StoreKit on iOS; emits `review_requested`. |
 
 | Signal | Arguments |
 | --- | --- |
@@ -88,6 +117,7 @@ waiting for Apple services.
 | `achievement_reported` | `ok: bool, achievement_id: String, error: String` |
 | `panel_closed` | `panel: String` (`leaderboard` or `achievements`) |
 | `panel_failed` | `panel: String, error: String` |
+| `review_requested` | `ok: bool, error: String` (`ok` = handed to StoreKit, not "dialog shown") |
 
 Empty identifiers and invalid achievement percentages are rejected before GameKit is
 called. On macOS, authentication, scores, achievements, and the access point use the

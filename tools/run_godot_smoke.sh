@@ -10,3 +10,4 @@ cd "$(dirname "$0")/.."
 godot_bin="$1"
 "$godot_bin" --headless --editor --path example --quit-after 120
 "$godot_bin" --headless --path example --script res://tests/runtime_contract.gd
+"$godot_bin" --headless --path example --script res://tests/pure_modules.gd

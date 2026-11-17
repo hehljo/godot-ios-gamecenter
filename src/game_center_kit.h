@@ -32,6 +32,7 @@ public:
 	void report_achievement(const String &achievement_id, double percent);
 	void show_achievements();
 	void set_access_point_visible(bool visible);
+	void request_review();
 };
 
 } // namespace godot

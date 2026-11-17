@@ -3,6 +3,7 @@
 #import <Foundation/Foundation.h>
 #import <GameKit/GameKit.h>
 #if TARGET_OS_IOS
+#import <StoreKit/StoreKit.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #endif
@@ -106,6 +107,18 @@ static UIViewController *gck_presenting_controller() {
 	return window == nil ? nil : gck_top_controller(window.rootViewController);
 }
 
+// StoreKit wants the scene the user is looking at; an inactive or background
+// scene silently shows nothing, so only a foreground-active one qualifies.
+static UIWindowScene *gck_active_window_scene() {
+	for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+		if ([scene isKindOfClass:[UIWindowScene class]] &&
+				scene.activationState == UISceneActivationStateForegroundActive) {
+			return (UIWindowScene *)scene;
+		}
+	}
+	return nil;
+}
+
 static void gck_emit_panel_failed(GameCenterKit *owner, const char *panel, const char *error) {
 	owner->call_deferred("emit_signal", "panel_failed", String(panel), String(error));
 }
@@ -207,6 +220,7 @@ void GameCenterKit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("report_achievement", "achievement_id", "percent"), &GameCenterKit::report_achievement);
 	ClassDB::bind_method(D_METHOD("show_achievements"), &GameCenterKit::show_achievements);
 	ClassDB::bind_method(D_METHOD("set_access_point_visible", "visible"), &GameCenterKit::set_access_point_visible);
+	ClassDB::bind_method(D_METHOD("request_review"), &GameCenterKit::request_review);
 	ADD_SIGNAL(MethodInfo("authenticated",
 			PropertyInfo(Variant::BOOL, "ok"), PropertyInfo(Variant::STRING, "error")));
 	ADD_SIGNAL(MethodInfo("score_submitted",
@@ -215,6 +229,8 @@ void GameCenterKit::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("achievement_reported",
 			PropertyInfo(Variant::BOOL, "ok"), PropertyInfo(Variant::STRING, "achievement_id"),
 			PropertyInfo(Variant::STRING, "error")));
+	ADD_SIGNAL(MethodInfo("review_requested",
+			PropertyInfo(Variant::BOOL, "ok"), PropertyInfo(Variant::STRING, "error")));
 	ADD_SIGNAL(MethodInfo("panel_closed", PropertyInfo(Variant::STRING, "panel")));
 	ADD_SIGNAL(MethodInfo("panel_failed",
 			PropertyInfo(Variant::STRING, "panel"), PropertyInfo(Variant::STRING, "error")));
@@ -381,4 +397,34 @@ void GameCenterKit::set_access_point_visible(bool visible) {
 		GKAccessPoint.shared.location = GKAccessPointLocationTopTrailing;
 		GKAccessPoint.shared.active = visible;
 	}
+}
+
+// StoreKit decides whether a prompt actually appears (at most three times in
+// 365 days, never in TestFlight). ok=true therefore means "handed to StoreKit",
+// not "the player saw a dialog". AppStore.requestReview(in:) is Swift-only, so
+// Objective-C++ keeps the iOS 14 scene API, deprecated since iOS 18 but working.
+void GameCenterKit::request_review() {
+#if TARGET_OS_IOS
+	GameCenterKit *self_ptr = this;
+	const gamecenter::CallbackLifetime::Token token = callback_lifetime.token();
+	dispatch_async(dispatch_get_main_queue(), ^{
+		if (!gamecenter::CallbackLifetime::is_alive(token)) {
+			return;
+		}
+		UIWindowScene *scene = gck_active_window_scene();
+		if (scene == nil) {
+			self_ptr->call_deferred("emit_signal", "review_requested", false,
+					"no foreground-active window scene can present the review prompt");
+			return;
+		}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+		[SKStoreReviewController requestReviewInScene:scene];
+#pragma clang diagnostic pop
+		self_ptr->call_deferred("emit_signal", "review_requested", true, String());
+	});
+#else
+	call_deferred("emit_signal", "review_requested", false,
+			"review prompts are available only on iOS");
+#endif
 }

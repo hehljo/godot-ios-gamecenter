@@ -2,6 +2,23 @@
 
 All notable changes to GameCenterKit are documented in this file.
 
+## [1.1.0] - 2026-11-17 (fork hehljo/godot-ios-gamecenter)
+
+### Added
+
+- `request_review()` with signal `review_requested(ok, error)`: hands a review
+  request to StoreKit (`SKStoreReviewController requestReviewInScene:`, iOS 14+)
+  in the foreground-active window scene. Outside iOS it fails deterministically.
+  The export plug-in now also links `StoreKit.framework`.
+- Platform-free GDScript modules: `GameCenterBridge` (one code path for every
+  platform, failure signals without the native singleton), `GameCenterReviewPolicy`
+  (when to ask) and `GameCenterScoreQueue` (offline queue keyed by leaderboard
+  occurrence, so expired daily/weekly scores are never submitted).
+- `example/tests/pure_modules.gd` runs those modules headless on any OS.
+- Empty Linux x86_64/arm64 and Windows x86_64 libraries (no singleton), so desktop
+  editors and headless test runs load the extension without errors.
+- Releases attach `SHA256SUMS` next to the ZIP.
+
 ## [1.0.1] - 2026-09-11
 
 ### Fixed

@@ -12,7 +12,7 @@ from zipfile import ZipFile
 
 
 ADDON_ROOT = "addons/gamecenter/"
-EXPECTED_VERSION = "1.0.1"
+EXPECTED_VERSION = "1.1.0"
 
 
 class ValidationError(RuntimeError):
@@ -118,6 +118,20 @@ def inspect_xcframework(root: Path) -> None:
     require(found_device and found_simulator, "XCFramework is missing a required Apple slice")
 
 
+STUB_SIGNATURES = {
+    "libgamecenter.linux.template_debug.x86_64.so": ("ELF 64-bit", "x86-64"),
+    "libgamecenter.linux.template_debug.arm64.so": ("ELF 64-bit", "ARM aarch64"),
+    "libgamecenter.windows.template_debug.x86_64.dll": ("PE32+", "x86-64"),
+}
+
+
+def inspect_desktop_stub(binary: Path) -> None:
+    require(binary.is_file(), f"desktop stub is missing: {binary.name}")
+    description = run("file", str(binary))
+    for marker in STUB_SIGNATURES[binary.name]:
+        require(marker in description, f"{binary.name} is not {marker}: {description.strip()}")
+
+
 def validate(archive: Path) -> None:
     require(archive.is_file(), f"archive does not exist: {archive}")
     with ZipFile(archive) as package:
@@ -150,10 +164,13 @@ def validate(archive: Path) -> None:
             inspect_xcframework(addon / "bin/libgamecenter.ios.xcframework")
             inspect_macos_binary(addon / "bin/libgamecenter.macos.template_debug.universal.dylib")
             inspect_macos_binary(addon / "bin/libgamecenter.macos.template_release.universal.dylib")
+            for stub in STUB_SIGNATURES:
+                inspect_desktop_stub(addon / "bin" / stub)
 
     print(
-        "validated GameCenterKit 1.0.1: iOS 14 arm64 device, "
-        "arm64/x86_64 simulator, macOS 11 arm64/x86_64"
+        f"validated GameCenterKit {EXPECTED_VERSION}: iOS 14 arm64 device, "
+        "arm64/x86_64 simulator, macOS 11 arm64/x86_64, "
+        "empty Linux x86_64/arm64 and Windows x86_64 stubs"
     )
 
 

@@ -24,7 +24,7 @@ class IOSExportSmokeTests(unittest.TestCase):
         self.fixture = self.root / "fixture"
         self.fixture.mkdir()
         (self.fixture / "project.pbxproj").write_text(
-            "GameKit.framework libgamecenter.ios.xcframework\n"
+            "GameKit.framework StoreKit.framework libgamecenter.ios.xcframework\n"
         )
         self.write_tool("godot", '''#!/bin/bash
 set -eu

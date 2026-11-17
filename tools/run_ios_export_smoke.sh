@@ -46,6 +46,7 @@ for export_root in "$debug_root" "$release_root"; do
 	require_file "$project"
 	require_file "$entitlements"
 	require_match 'GameKit\.framework' "$project" 'GameKit framework reference'
+	require_match 'StoreKit\.framework' "$project" 'StoreKit framework reference'
 	require_match 'libgamecenter\.ios\.xcframework' "$project" 'GameCenterKit XCFramework reference'
 	# Human-readable `plutil -p` renders booleans differently across macOS
 	# versions. Extract the typed value, escaping dots in the literal key.

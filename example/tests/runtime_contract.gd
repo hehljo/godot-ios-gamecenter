@@ -4,6 +4,7 @@ var failures: Array[String] = []
 var score_answered := false
 var achievement_answered := false
 var panel_answered := false
+var review_answered := false
 
 
 func _initialize() -> void:
@@ -25,7 +26,13 @@ func _initialize() -> void:
 			failures.append("unexpected panel failure name: %s" % panel)
 		panel_answered = true)
 
+	game_center.review_requested.connect(func(ok: bool, error: String) -> void:
+		if ok or error.is_empty():
+			failures.append("review request outside iOS did not fail with a reason")
+		review_answered = true)
+
 	game_center.submit_score("   ", 1)
+	game_center.request_review()
 	game_center.report_achievement("invalid.percent", 101.0)
 	if OS.get_name() == "macOS":
 		game_center.show_achievements()
@@ -34,6 +41,8 @@ func _initialize() -> void:
 
 	if not score_answered:
 		failures.append("score failure signal was not emitted")
+	if not review_answered:
+		failures.append("review failure signal was not emitted")
 	if not achievement_answered:
 		failures.append("achievement failure signal was not emitted")
 	if OS.get_name() == "macOS" and not panel_answered:

@@ -31,3 +31,4 @@ class IosExportPlugin extends EditorExportPlugin:
 	) -> void:
 		if _supports_platform(get_export_platform()):
 			add_apple_embedded_platform_framework("GameKit.framework")
+			add_apple_embedded_platform_framework("StoreKit.framework")
